@@ -1,13 +1,8 @@
 from datetime import datetime
 
 class Session:
-    def __init__(
-        self, 
-        id: int=0, 
-        source: str='', 
-        notes: str='', 
-        updated_at: datetime=datetime.now().replace(microsecond=0).strftime('%Y-%m-%d %H:%M:%S')
-    ) -> None:
+    def __init__(self, id: int=0, source: str='', notes: str='', 
+        updated_at: datetime=datetime.now().replace(microsecond=0).strftime('%Y-%m-%d %H:%M:%S')) -> None:
         self.id = id
         self.source = source
         self.notes = notes

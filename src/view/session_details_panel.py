@@ -55,7 +55,7 @@ class SessionDetailsPanel(QWidget):
         self.vocabulary_list_qlw.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
         # self.vocabulary_list_panel.itemClicked.connect(self.vocabulary_clicked)
         for vocab in vocabulary_list:
-            vocab_item = QListWidgetItem(vocab.vocabulary[0])
+            vocab_item = QListWidgetItem(vocab.vocabulary)
             vocab_item.setData(1, vocab)
             self.vocabulary_list_qlw.addItem(vocab_item)
         # self.vocabulary_list_qlw.setEditTriggers(QAbstractItemView.EditTrigger.AnyKeyPressed)
@@ -95,7 +95,7 @@ class SessionDetailsPanel(QWidget):
 
 
     def remove_vocabulary(self) -> None:
-        vocab_id_list = [item.data(1).id for item in self.vocabulary_list_qlw.selectedItems()]
+        vocab_id_list = [(item.data(1).id,) for item in self.vocabulary_list_qlw.selectedItems()]
         print(vocab_id_list)
 
         try:
