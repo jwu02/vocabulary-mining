@@ -103,7 +103,7 @@ class SessionDetailsPanel(QWidget):
         self.setLayout(outer_layout)
 
 
-    def vocabulary_clicked(self, item: QListWidgetItem):
+    def vocabulary_clicked(self, item: QListWidgetItem) -> None:
         """
         Call parent object to update vocabulary details panel to the vocab item clicked
 
@@ -114,10 +114,17 @@ class SessionDetailsPanel(QWidget):
 
 
     def get_selected_vocabularies(self) -> list[Vocabulary]:
+        """
+        Return:
+            list of selected vocabularies from vocabulary list widget
+        """
         return [vocab.data(1) for vocab in self.vocabulary_list_qlw.selectedItems()]
 
 
     def remove_vocabulary(self) -> None:
+        """
+        Remove vocab item from database and update UI with vocab removed
+        """
         vocab_id_list = [(item.data(1).id,) for item in self.vocabulary_list_qlw.selectedItems()]
 
         try:
@@ -128,17 +135,13 @@ class SessionDetailsPanel(QWidget):
                               WHERE VocabularyId=?;
                               """
             cursor.executemany(delete_query, vocab_id_list)
-
-            update_query = """UPDATE MiningSessions
-                              SET UpdatedAt=?
-                              WHERE SessionId=?;
-                              """
-            cursor.execute(update_query, (datetime.now().replace(microsecond=0), self.session.id))
             connection.commit()
             connection.close()
             print("Deleted vocab(s).")
         except sqlite3.Error as e:
             print(e)
+
+        self.update_last_updated_timestamp_db()
         
         # update UI to include new session object
         self.parentObject.update_sessions_list_panel()
@@ -147,6 +150,12 @@ class SessionDetailsPanel(QWidget):
 
 
     def scrape_chinese_vocab_details(self, vocab: str) -> tuple[str, str]:
+        """
+        Scrape reading and meaning for a vocab
+
+        Return:
+            tuple of strings for reading and meaning
+        """
         reading = ''
         meaning = ''
 
@@ -174,6 +183,9 @@ class SessionDetailsPanel(QWidget):
 
 
     def add_vocabulary(self) -> None:
+        """
+        Add vocab item to database and update UI with new vocab
+        """
         vocab_to_insert = self.vocabulary_entry_qle.text()
         if not vocab_to_insert: return # ignore empty inputs
         
@@ -187,6 +199,27 @@ class SessionDetailsPanel(QWidget):
                               VALUES (?, ?, ?, ?);
                               """
             cursor.execute(insert_query, (vocab_to_insert, reading, meaning, self.session.id))
+            connection.commit()
+            connection.close()
+            print(f"Inserted vocab {vocab_to_insert}.")
+        except sqlite3.Error as e:
+            print(e)
+
+        self.update_last_updated_timestamp_db()
+        
+        # update UI to include new session object
+        self.parentObject.update_sessions_list_panel()
+        self.parentObject.update_session_details_panel(self.parentObject.get_sessions_list()[0])
+        self.parentObject.update_vocabulary_details_panel_with_top_item()
+
+    
+    def update_last_updated_timestamp_db(self):
+        """
+        Updated session last updated timestamp in database
+        """
+        try:
+            connection = database.vocabulary_db.connect()
+            cursor = connection.cursor()
 
             update_query = """UPDATE MiningSessions
                               SET UpdatedAt=?
@@ -195,17 +228,16 @@ class SessionDetailsPanel(QWidget):
             cursor.execute(update_query, (datetime.now().replace(microsecond=0), self.session.id))
             connection.commit()
             connection.close()
-            print(f"Inserted vocab {vocab_to_insert}.")
+            print(f"Updated session last updated timestamp.")
         except sqlite3.Error as e:
             print(e)
-        
-        # update UI to include new session object
-        self.parentObject.update_sessions_list_panel()
-        self.parentObject.update_session_details_panel(self.parentObject.get_sessions_list()[0])
-        self.parentObject.update_vocabulary_details_panel_with_top_item()
 
-        
+
     def vocabulary_list_items_selected(self) -> None:
+        """
+        Function for checking if any vocab list widget items have been selected
+        to enable (or disable) button to remove vocab
+        """
         if len(self.vocabulary_list_qlw.selectedItems()) > 0:
             self.remove_vocabulary_qpb.setEnabled(True)
         else:
@@ -221,13 +253,10 @@ class SessionDetailsPanel(QWidget):
             cursor = connection.cursor()
 
             update_query = """UPDATE MiningSessions
-                              SET Source=?, Notes=?, UpdatedAt=?
+                              SET Source=?, Notes=?
                               WHERE SessionId=?;
                               """
-            cursor.execute(update_query, 
-                (self.session_source_qle.text(), 
-                self.session_notes_qpte.text(), 
-                datetime.now().replace(microsecond=0), 
+            cursor.execute(update_query, (self.session_source_qle.text(), self.session_notes_qpte.text(), 
                 self.session.id))
             connection.commit()
             connection.close()
@@ -235,12 +264,14 @@ class SessionDetailsPanel(QWidget):
         except sqlite3.Error as e:
             print(e)
         
+        self.update_last_updated_timestamp_db()
+        
         # update UI with updated session details
         self.parentObject.update_sessions_list_panel()
-        self.update_last_updated_timestamp()
+        self.update_last_updated_timestamp_label()
 
 
-    def update_last_updated_timestamp(self) -> None:
+    def update_last_updated_timestamp_label(self) -> None:
         """
         Update last updated timestamp label
         """
@@ -279,12 +310,19 @@ class SessionDetailsPanel(QWidget):
         except sqlite3.Error as e:
             print(e)
     
-    def get_session(self) -> Session:
+
+    def get_current_session(self) -> Session:
+        """
+        Return:
+            the session object associated with current instance of the sesssion details panel
+        """
         return self.session
     
-    def update_vocabulary_list_widget(self, new_vocab: Vocabulary):
+
+    def update_vocabulary_list_widget(self, new_vocab: Vocabulary) -> None:
         """
         Find the id of updated vocab in list widget and update with new details from 
+        vocab details panel
         """
         for i in range(len(self.vocabulary_list_qlw)):
             if self.vocabulary_list_qlw.item(i).data(1).id == new_vocab.id:

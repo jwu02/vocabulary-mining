@@ -62,18 +62,13 @@ class VocabularyDetailsPanel(QWidget):
                 self.sentence_qle.text(), 
                 self.notes_qle.toPlainText(), 
                 self.vocabulary.id))
-
-            update_query = """UPDATE MiningSessions
-                              SET UpdatedAt=?
-                              WHERE SessionId=?;
-                              """
-            cursor.execute(update_query, (datetime.now().replace(microsecond=0), self.parentObject.get_current_session().id))
-            
             connection.commit()
             connection.close()
             print("Updated vocabulary details.")
         except sqlite3.Error as e:
             print(e)
+        
+        self.parentObject.get_session_details_panel().update_last_updated_timestamp_db()
         
         # update vocab assigned to this instance of a vocab details panel
         self.vocabulary = Vocabulary(
@@ -83,12 +78,12 @@ class VocabularyDetailsPanel(QWidget):
             self.meaning_qle.toPlainText(), 
             self.sentence_qle.text(), 
             self.notes_qle.toPlainText(), 
-            self.parentObject.get_current_session().id
+            self.parentObject.get_session_details_panel().get_current_session().id
         )
 
         # update UI and internal data
         self.parentObject.update_sessions_list_panel()
-        self.parentObject.get_session_details_panel().update_last_updated_timestamp()
+        self.parentObject.get_session_details_panel().update_last_updated_timestamp_label()
         self.parentObject.get_session_details_panel().update_vocabulary_list_widget(self.vocabulary)
 
 

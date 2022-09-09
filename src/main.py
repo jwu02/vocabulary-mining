@@ -126,15 +126,10 @@ class MainWindow(QWidget):
     def get_sessions_list_panel(self) -> SessionsListPanel:
         return self.sessions_list_panel
 
+
     def get_session_details_panel(self) -> SessionDetailsPanel:
         return self.session_details_panel
 
-    def get_current_session(self) -> Session:
-        """
-        Return:
-            current focused session on sesssion details panel
-        """
-        return self.session_details_panel.get_session()
 
     def get_vocabulary_details_panel(self) -> VocabularyDetailsPanel:
         return self.vocabulary_details_panel
