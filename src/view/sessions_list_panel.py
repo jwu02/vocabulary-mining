@@ -13,13 +13,14 @@ from PyQt6.QtWidgets import (
 )
 import database.vocabulary_db
 from model.session import Session
-from model.vocabulary import Vocabulary
+
 
 class SessionsListPanel(QWidget):
     def __init__(self, parentObject) -> None:
         super().__init__()
 
         self.parentObject = parentObject
+        self.sessions_list = self.get_sessions_list_from_db()
 
         outer_layout = QVBoxLayout()
 
@@ -51,11 +52,12 @@ class SessionsListPanel(QWidget):
         #     delete_session_btn_list[i].setIcon(delete_icon)
         #     sessions_list_panel.addWidget(delete_session_btn_list[i], i, 1)
 
+        # sessions list widget
         self.sessions_list_qlw = QListWidget()
         self.sessions_list_qlw.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
         self.sessions_list_qlw.itemClicked.connect(self.session_clicked)
         self.sessions_list_qlw.itemSelectionChanged.connect(self.session_list_items_selected)
-        for session in self.parentObject.get_sessions_list():
+        for session in self.sessions_list:
             session_item = QListWidgetItem(session.source)
             session_item.setData(1, session) # role 0 set with value of item's text by default
             if session.source == '':
@@ -67,22 +69,51 @@ class SessionsListPanel(QWidget):
 
         outer_layout.addWidget(self.sessions_list_qlw)
 
-        if len(self.parentObject.get_sessions_list()) == 0:
-            self.delete_session_qpb.setEnabled(False)
+        if not self.sessions_list:
+            self.delete_session_qpb.setDisabled(1)
 
         self.setLayout(outer_layout)
+
+
+    def get_sessions_list_from_db(self) -> list[Session]:
+        """
+        Returns:
+            list of all Session objects obtained from database
+        """
+        try:
+            connection = database.vocabulary_db.connect()
+            cursor = connection.cursor()
+        except sqlite3.Error as e:
+            print(e)
+        
+        select_query = """SELECT * FROM MiningSessions
+                          ORDER BY UpdatedAt DESC;
+                          """
+        cursor.execute(select_query)
+        rows = cursor.fetchall()
+        sessions_list = [Session(row[0], row[1], row[2], row[3]) for row in rows]
+        
+        connection.close()
+        # print("Selected all sessions!")
+
+        return sessions_list
+
+
+    def get_sessions_list(self) -> list[Session]:
+        return self.sessions_list
 
 
     def session_list_items_selected(self) -> None:
         """
         Disable delete session and export to anki button if no items are selected
+        otherwise enable them
         """
-        if len(self.sessions_list_qlw.selectedItems()) > 0:
-            self.delete_session_qpb.setEnabled(True)
-            self.export_as_anki_deck_qpb.setEnabled(True)
+        if self.sessions_list_qlw.selectedItems():
+            self.delete_session_qpb.setEnabled(1)
+            self.export_as_anki_deck_qpb.setEnabled(1)
         else:
-            self.delete_session_qpb.setEnabled(False)
-            self.export_as_anki_deck_qpb.setEnabled(False)
+            self.delete_session_qpb.setDisabled(1)
+            self.export_as_anki_deck_qpb.setDisabled(1)
 
 
     def session_clicked(self, item: QListWidgetItem) -> None:
@@ -116,7 +147,7 @@ class SessionsListPanel(QWidget):
 
         # update UI to include new session object
         self.parentObject.update_sessions_list_panel()
-        self.parentObject.update_session_details_panel(self.parentObject.get_sessions_list()[0])
+        self.parentObject.update_session_details_panel(self.parentObject.get_sessions_list_panel().get_sessions_list()[0])
         self.parentObject.update_vocabulary_details_panel_with_top_item()
 
 
@@ -139,8 +170,8 @@ class SessionsListPanel(QWidget):
 
         # update UI to remove session object
         self.parentObject.update_sessions_list_panel()
-        if len(self.parentObject.get_sessions_list()) > 0:
-            self.parentObject.update_session_details_panel(self.parentObject.get_sessions_list()[0])
+        if self.parentObject.get_sessions_list_panel().get_sessions_list():
+            self.parentObject.update_session_details_panel(self.parentObject.get_sessions_list_panel().get_sessions_list()[0])
         else:
             self.parentObject.update_session_details_panel(Session())
         self.parentObject.update_vocabulary_details_panel_with_top_item()

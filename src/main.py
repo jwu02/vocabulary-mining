@@ -8,9 +8,8 @@ from model.vocabulary import Vocabulary
 from view.sessions_list_panel import SessionsListPanel
 from view.session_details_panel import SessionDetailsPanel
 from view.vocabulary_details_panel import VocabularyDetailsPanel
-import sqlite3
-import database.vocabulary_db
 from model.session import Session
+
 
 class MainWindow(QWidget):
     def __init__(self) -> None:
@@ -21,21 +20,21 @@ class MainWindow(QWidget):
         outer_layout = QVBoxLayout()
         self.window_body_layout = QHBoxLayout()
 
-        self.sessions_list = self.get_sessions_list_from_db()
-        
         # side panel with list of sessions
         self.sessions_list_panel = SessionsListPanel(self)
         self.window_body_layout.addWidget(self.sessions_list_panel)
 
+        self.sessions_list = self.sessions_list_panel.get_sessions_list_from_db()
+
         # initialise interface with details of the last updated session
-        if len(self.sessions_list) > 0:
+        if self.sessions_list: # if list contains elements
             self.session_details_panel = SessionDetailsPanel(self, self.sessions_list[0])
         else:
             self.session_details_panel = SessionDetailsPanel(self, Session())
         self.window_body_layout.addWidget(self.session_details_panel)
 
         selected_vocabularies = self.session_details_panel.get_selected_vocabularies()
-        if len(selected_vocabularies) > 0:
+        if selected_vocabularies:
             self.vocabulary_details_panel = VocabularyDetailsPanel(self, selected_vocabularies[0])
         else:
             self.vocabulary_details_panel = VocabularyDetailsPanel(self, Vocabulary())
@@ -88,39 +87,9 @@ class MainWindow(QWidget):
         """
         Update sessions list panel with updated set of sessions
         """
-        self.sessions_list = self.get_sessions_list_from_db()
-
         self.sessions_list_panel.deleteLater()
         self.sessions_list_panel = SessionsListPanel(self)
         self.window_body_layout.insertWidget(0, self.sessions_list_panel)
-    
-
-    def get_sessions_list_from_db(self) -> list[Session]:
-        """
-        Returns:
-            list of all Session objects obtained from database
-        """
-        try:
-            connection = database.vocabulary_db.connect()
-            cursor = connection.cursor()
-        except sqlite3.Error as e:
-            print(e)
-        
-        select_query = """SELECT * FROM MiningSessions
-                          ORDER BY UpdatedAt DESC;
-                          """
-        cursor.execute(select_query)
-        rows = cursor.fetchall()
-        sessions_list = [Session(row[0], row[1], row[2], row[3]) for row in rows]
-        
-        connection.close()
-        # print("Selected all sessions!")
-
-        return sessions_list
-
-
-    def get_sessions_list(self) -> list[Session]:
-        return self.sessions_list
 
 
     def get_sessions_list_panel(self) -> SessionsListPanel:

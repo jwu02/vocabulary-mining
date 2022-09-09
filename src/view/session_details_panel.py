@@ -39,26 +39,29 @@ class SessionDetailsPanel(QWidget):
         self.session_details_layout.addWidget(QLabel('<b>Source:</b>'), 0, 0, Qt.AlignmentFlag.AlignTop)
         self.session_source_qle = QLineEdit()
         self.session_source_qle.setPlaceholderText('Untitled')
-        self.session_source_qle.setText(session.source)
+        self.session_source_qle.setText(self.session.source)
         self.session_source_qle.textChanged.connect(self.update_session_details)
         self.session_details_layout.addWidget(self.session_source_qle, 0, 1, Qt.AlignmentFlag.AlignTop)
 
         # session last updated timestamp
         self.session_details_layout.addWidget(QLabel('<b>Last updated:</b>'), 1, 0, Qt.AlignmentFlag.AlignTop)
-        self.session_updated_date_ql = QLabel('') if len(self.parentObject.get_sessions_list()) == 0 else QLabel(session.get_updated_at_str())
+        if self.parentObject.get_sessions_list_panel().get_sessions_list():
+            self.session_updated_date_ql = QLabel(self.session.get_updated_at_str())
+        else:
+            self.session_updated_date_ql = QLabel('')
         self.session_details_layout.addWidget(self.session_updated_date_ql, 1, 1, Qt.AlignmentFlag.AlignTop)
 
         # session notes
         self.session_notes_qpte = QLineEdit()
         self.session_notes_qpte.setPlaceholderText('Enter notes here')
-        self.session_notes_qpte.setText(session.notes)
+        self.session_notes_qpte.setText(self.session.notes)
         self.session_notes_qpte.textChanged.connect(self.update_session_details)
         self.session_details_layout.addWidget(QLabel('<b>Notes:</b>'), 2, 0, Qt.AlignmentFlag.AlignTop)
         self.session_details_layout.addWidget(self.session_notes_qpte, 3, 0, 1, 2, Qt.AlignmentFlag.AlignTop)
         outer_layout.addLayout(self.session_details_layout)
 
         # session vocabulary list
-        vocabulary_list = self.get_session_vocabularies_from_db(session.id)
+        vocabulary_list = self.get_session_vocabularies_from_db(self.session.id)
         self.vocabulary_list_qlw = QListWidget()
         self.vocabulary_list_qlw.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
         self.vocabulary_list_qlw.itemClicked.connect(self.vocabulary_clicked)
@@ -93,7 +96,7 @@ class SessionDetailsPanel(QWidget):
             # if no vocab present in list then disable remove vocab button
             self.remove_vocabulary_qpb.setEnabled(False)
 
-        if len(self.parentObject.get_sessions_list()) == 0:
+        if not self.parentObject.get_sessions_list_panel().get_sessions_list():
             self.session_source_qle.setEnabled(False)
             self.session_notes_qpte.setEnabled(False)
             self.vocabulary_entry_qle.setEnabled(False)
@@ -145,7 +148,7 @@ class SessionDetailsPanel(QWidget):
         
         # update UI to include new session object
         self.parentObject.update_sessions_list_panel()
-        self.parentObject.update_session_details_panel(self.parentObject.get_sessions_list()[0])
+        self.parentObject.update_session_details_panel(self.parentObject.get_sessions_list_panel().get_sessions_list()[0])
         self.parentObject.update_vocabulary_details_panel_with_top_item()
 
 
@@ -209,7 +212,7 @@ class SessionDetailsPanel(QWidget):
         
         # update UI to include new session object
         self.parentObject.update_sessions_list_panel()
-        self.parentObject.update_session_details_panel(self.parentObject.get_sessions_list()[0])
+        self.parentObject.update_session_details_panel(self.parentObject.get_sessions_list_panel().get_sessions_list()[0])
         self.parentObject.update_vocabulary_details_panel_with_top_item()
 
     
