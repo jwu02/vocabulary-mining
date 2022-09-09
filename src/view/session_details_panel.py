@@ -18,6 +18,12 @@ from model.session import Session
 from model.vocabulary import Vocabulary
 from datetime import datetime
 
+from urllib.request import urlopen
+from urllib.error import HTTPError, URLError
+import urllib.parse
+from bs4 import BeautifulSoup
+
+
 class SessionDetailsPanel(QWidget):
     def __init__(self, parentObject, session: Session) -> None:
         super().__init__()
@@ -62,7 +68,6 @@ class SessionDetailsPanel(QWidget):
             self.vocabulary_list_qlw.addItem(vocab_item)
         # self.vocabulary_list_qlw.setEditTriggers(QAbstractItemView.EditTrigger.AnyKeyPressed)
         outer_layout.addWidget(self.vocabulary_list_qlw)
-
         # vocab entry widget
         self.vocabulary_entry_qle = QLineEdit()
         self.vocabulary_entry_qle.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -91,12 +96,11 @@ class SessionDetailsPanel(QWidget):
         if len(self.parentObject.get_sessions_list()) == 0:
             self.session_source_qle.setEnabled(False)
             self.session_notes_qpte.setEnabled(False)
+            self.vocabulary_entry_qle.setEnabled(False)
             self.add_vocabulary_qpb.setEnabled(False)
             self.remove_vocabulary_qpb.setEnabled(False)
 
         self.setLayout(outer_layout)
-
-        
 
 
     def vocabulary_clicked(self, item: QListWidgetItem):
@@ -142,18 +146,47 @@ class SessionDetailsPanel(QWidget):
         self.parentObject.update_vocabulary_details_panel_with_top_item()
 
 
+    def scrape_chinese_vocab_details(self, vocab: str) -> tuple[str, str]:
+        reading = ''
+        meaning = ''
+
+        try:
+            html = urlopen(f'https://www.mdbg.net/chinese/dictionary?page=worddict&wdrst=0&wdqb=*{urllib.parse.quote(vocab)}*')
+        except HTTPError as e:
+            print(e)
+        except URLError as e:
+            print(e)
+
+        bs = BeautifulSoup(html, 'lxml')
+        try:
+            if not bs.findAll(text='No results found searching for'):
+                table_element = bs.find('table', {'class': 'wordresults'})
+                search_result_tr_elements = table_element.tbody.find_all('tr', {'class': 'row'})
+                for tr in search_result_tr_elements:
+                    if tr.find('div', {'class': 'hanzi'}).get_text(strip=True) == vocab:
+                        reading = tr.find('div', {'class': 'pinyin'}).get_text()
+                        meaning = tr.find('td', {'class': 'details'}).get_text()
+                        break
+        except AttributeError as e:
+            print(e)
+        
+        return (reading, meaning)
+
+
     def add_vocabulary(self) -> None:
         vocab_to_insert = self.vocabulary_entry_qle.text()
-        if not vocab_to_insert: return
+        if not vocab_to_insert: return # ignore empty inputs
+        
+        reading, meaning = self.scrape_chinese_vocab_details(vocab_to_insert)
 
         try:
             connection = database.vocabulary_db.connect()
             cursor = connection.cursor()
 
-            insert_query = """INSERT INTO Vocabularies (Vocabulary, SessionId)
-                              VALUES (?, ?);
+            insert_query = """INSERT INTO Vocabularies (Vocabulary, Reading, Meaning, SessionId)
+                              VALUES (?, ?, ?, ?);
                               """
-            cursor.execute(insert_query, (vocab_to_insert, self.session.id))
+            cursor.execute(insert_query, (vocab_to_insert, reading, meaning, self.session.id))
 
             update_query = """UPDATE MiningSessions
                               SET UpdatedAt=?
@@ -204,7 +237,13 @@ class SessionDetailsPanel(QWidget):
         
         # update UI with updated session details
         self.parentObject.update_sessions_list_panel()
-        # update last updated date timestamp label
+        self.update_last_updated_timestamp()
+
+
+    def update_last_updated_timestamp(self) -> None:
+        """
+        Update last updated timestamp label
+        """
         self.session_updated_date_ql.deleteLater()
         self.session_updated_date_ql = QLabel(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
         self.session_details_layout.addWidget(self.session_updated_date_ql, 1, 1, Qt.AlignmentFlag.AlignTop)
@@ -239,4 +278,16 @@ class SessionDetailsPanel(QWidget):
             return vocabulary_list
         except sqlite3.Error as e:
             print(e)
-            
+    
+    def get_session(self) -> Session:
+        return self.session
+    
+    def update_vocabulary_list_widget(self, new_vocab: Vocabulary):
+        """
+        Find the id of updated vocab in list widget and update with new details from 
+        """
+        for i in range(len(self.vocabulary_list_qlw)):
+            if self.vocabulary_list_qlw.item(i).data(1).id == new_vocab.id:
+                self.vocabulary_list_qlw.item(i).setData(1, new_vocab)
+                break
+    

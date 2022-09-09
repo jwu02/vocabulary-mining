@@ -50,12 +50,12 @@ class MainWindow(QWidget):
 
 
     def update_vocabulary_details_panel_with_top_item(self) -> None:
-        selected_vocabularies = self.get_session_details_panel().get_selected_vocabularies()
+        selected_vocabularies = self.session_details_panel.get_selected_vocabularies()
         if len(selected_vocabularies) > 0:
             self.update_vocabulary_details_panel(selected_vocabularies[0])
         else:
             self.update_vocabulary_details_panel()
-            self.get_vocabulary_details_panel().disable_all_fields()
+            self.vocabulary_details_panel.disable_all_fields()
 
 
     def update_vocabulary_details_panel(self, vocabulary: Vocabulary=Vocabulary()) -> None:
@@ -129,10 +129,16 @@ class MainWindow(QWidget):
     def get_session_details_panel(self) -> SessionDetailsPanel:
         return self.session_details_panel
 
+    def get_current_session(self) -> Session:
+        """
+        Return:
+            current focused session on sesssion details panel
+        """
+        return self.session_details_panel.get_session()
+
     def get_vocabulary_details_panel(self) -> VocabularyDetailsPanel:
         return self.vocabulary_details_panel
     
-
 
 app = QApplication([])
 mw = MainWindow()
