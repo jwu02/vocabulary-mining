@@ -13,6 +13,7 @@ from PyQt6.QtWidgets import (
 )
 import database.vocabulary_db
 from model.session import Session
+from model.vocabulary import Vocabulary
 
 class SessionsListPanel(QWidget):
     def __init__(self, parentObject) -> None:
@@ -73,6 +74,9 @@ class SessionsListPanel(QWidget):
 
 
     def session_list_items_selected(self) -> None:
+        """
+        Disable delete session and export to anki button if no items are selected
+        """
         if len(self.sessions_list_qlw.selectedItems()) > 0:
             self.delete_session_qpb.setEnabled(True)
             self.export_as_anki_deck_qpb.setEnabled(True)
@@ -83,14 +87,14 @@ class SessionsListPanel(QWidget):
 
     def session_clicked(self, item: QListWidgetItem) -> None:
         """
-        Call parent object to update session details panel to 
-        the session item clicked
+        Call parent object to update session details panel to the session item clicked
 
         Args:
             item (QListWidgetItem): the session list item clicked
         """
         self.parentObject.update_session_details_panel(item.data(1))
-    
+        self.parentObject.update_vocabulary_details_panel_with_top_item()
+
 
     def add_new_session(self) -> None:
         """
@@ -113,7 +117,8 @@ class SessionsListPanel(QWidget):
         # update UI to include new session object
         self.parentObject.update_sessions_list_panel()
         self.parentObject.update_session_details_panel(self.parentObject.get_sessions_list()[0])
-        
+        self.parentObject.update_vocabulary_details_panel_with_top_item()
+
 
     def delete_session(self) -> None:
         session_id_list = [(item.data(1).id,) for item in self.sessions_list_qlw.selectedItems()]
@@ -138,6 +143,7 @@ class SessionsListPanel(QWidget):
             self.parentObject.update_session_details_panel(self.parentObject.get_sessions_list()[0])
         else:
             self.parentObject.update_session_details_panel(Session())
+        self.parentObject.update_vocabulary_details_panel_with_top_item()
     
 
     def export_as_anki_deck(self) -> None:

@@ -32,6 +32,7 @@ class SessionDetailsPanel(QWidget):
         self.session_details_layout = QGridLayout()
         self.session_details_layout.addWidget(QLabel('<b>Source:</b>'), 0, 0, Qt.AlignmentFlag.AlignTop)
         self.session_source_qle = QLineEdit()
+        self.session_source_qle.setPlaceholderText('Untitled')
         self.session_source_qle.setText(session.source)
         self.session_source_qle.textChanged.connect(self.update_session_details)
         self.session_details_layout.addWidget(self.session_source_qle, 0, 1, Qt.AlignmentFlag.AlignTop)
@@ -43,6 +44,7 @@ class SessionDetailsPanel(QWidget):
 
         # session notes
         self.session_notes_qpte = QLineEdit()
+        self.session_notes_qpte.setPlaceholderText('Enter notes here')
         self.session_notes_qpte.setText(session.notes)
         self.session_notes_qpte.textChanged.connect(self.update_session_details)
         self.session_details_layout.addWidget(QLabel('<b>Notes:</b>'), 2, 0, Qt.AlignmentFlag.AlignTop)
@@ -50,10 +52,10 @@ class SessionDetailsPanel(QWidget):
         outer_layout.addLayout(self.session_details_layout)
 
         # session vocabulary list
-        vocabulary_list = self.get_session_vocabularies(session.id)
+        vocabulary_list = self.get_session_vocabularies_from_db(session.id)
         self.vocabulary_list_qlw = QListWidget()
         self.vocabulary_list_qlw.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
-        # self.vocabulary_list_panel.itemClicked.connect(self.vocabulary_clicked)
+        self.vocabulary_list_qlw.itemClicked.connect(self.vocabulary_clicked)
         for vocab in vocabulary_list:
             vocab_item = QListWidgetItem(vocab.vocabulary)
             vocab_item.setData(1, vocab)
@@ -73,6 +75,7 @@ class SessionDetailsPanel(QWidget):
         vocabulary_list_button_group = QHBoxLayout()
         self.add_vocabulary_qpb = QPushButton('+ add vocab', clicked=lambda: self.add_vocabulary())
         self.remove_vocabulary_qpb = QPushButton('- remove vocab', clicked=lambda: self.remove_vocabulary())
+        self.remove_vocabulary_qpb.setEnabled(False)
         vocabulary_list_button_group.addWidget(self.add_vocabulary_qpb)
         vocabulary_list_button_group.addWidget(self.remove_vocabulary_qpb)
 
@@ -93,10 +96,25 @@ class SessionDetailsPanel(QWidget):
 
         self.setLayout(outer_layout)
 
+        
+
+
+    def vocabulary_clicked(self, item: QListWidgetItem):
+        """
+        Call parent object to update vocabulary details panel to the vocab item clicked
+
+        Args:
+            item (QListWidgetItem): the vocab list item clicked
+        """
+        self.parentObject.update_vocabulary_details_panel(item.data(1))
+
+
+    def get_selected_vocabularies(self) -> list[Vocabulary]:
+        return [vocab.data(1) for vocab in self.vocabulary_list_qlw.selectedItems()]
+
 
     def remove_vocabulary(self) -> None:
         vocab_id_list = [(item.data(1).id,) for item in self.vocabulary_list_qlw.selectedItems()]
-        print(vocab_id_list)
 
         try:
             connection = database.vocabulary_db.connect()
@@ -121,6 +139,7 @@ class SessionDetailsPanel(QWidget):
         # update UI to include new session object
         self.parentObject.update_sessions_list_panel()
         self.parentObject.update_session_details_panel(self.parentObject.get_sessions_list()[0])
+        self.parentObject.update_vocabulary_details_panel_with_top_item()
 
 
     def add_vocabulary(self) -> None:
@@ -150,6 +169,7 @@ class SessionDetailsPanel(QWidget):
         # update UI to include new session object
         self.parentObject.update_sessions_list_panel()
         self.parentObject.update_session_details_panel(self.parentObject.get_sessions_list()[0])
+        self.parentObject.update_vocabulary_details_panel_with_top_item()
 
         
     def vocabulary_list_items_selected(self) -> None:
@@ -190,7 +210,7 @@ class SessionDetailsPanel(QWidget):
         self.session_details_layout.addWidget(self.session_updated_date_ql, 1, 1, Qt.AlignmentFlag.AlignTop)
 
 
-    def get_session_vocabularies(self, session_id: int) -> list[Vocabulary]:
+    def get_session_vocabularies_from_db(self, session_id: int) -> list[Vocabulary]:
         """
         Args:
             session_id (int): id for the session vocabulary to select
@@ -214,7 +234,7 @@ class SessionDetailsPanel(QWidget):
             vocabulary_list = [Vocabulary(v[0], v[1], v[2], v[3], v[4], v[5], v[6]) for v in vocabulary_rows]
 
             connection.close()
-            print("Selected all vocabulary.")
+            # print("Selected all vocabulary.")
 
             return vocabulary_list
         except sqlite3.Error as e:
