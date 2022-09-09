@@ -1,6 +1,6 @@
 class Vocabulary:
-    def __init__(self, id: int, vocabulary: str, reading: str, meaning: str, 
-            sentence: str, notes: str, session_id: int) -> None:
+    def __init__(self, id: int=0, vocabulary: str='', reading: str='', meaning: str='', 
+            sentence: str='', notes: str='', session_id: int=0) -> None:
         self.id = id
         self.vocabulary = vocabulary
         self.reading = reading
